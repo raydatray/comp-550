@@ -1,10 +1,12 @@
 import numpy as np
 from nltk.stem import PorterStemmer
 from nltk.tokenize import wordpunct_tokenize
+from sklearn.base import clone
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import make_pipeline
 
 stemmer = PorterStemmer()
 
@@ -95,7 +97,7 @@ PREPROCESSING_CONFIGS = [
 
 CLASSIFIERS = [
     ("naive bayes", MultinomialNB()),
-    ("logistic regression", LogisticRegression(max_iter=1000)),
+    ("logistic regression", LogisticRegression(max_iter=1000, random_state=37)),
 ]
 
 
@@ -124,13 +126,18 @@ def run_experiments(
     sentences: list[str], labels: np.ndarray, dataset_name: str
 ) -> list[dict]:
     results = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=37)
 
     for cfg in PREPROCESSING_CONFIGS:
-        vectorizer = cfg["vectorizer_class"](**cfg["params"])
-        X = vectorizer.fit_transform(sentences)
-
         for classifier_name, classifier in CLASSIFIERS:
-            scores = cross_val_score(classifier, X, labels, cv=5, scoring="accuracy")
+            pipeline = make_pipeline(
+                cfg["vectorizer_class"](**cfg["params"]),
+                clone(classifier),
+            )
+
+            scores = cross_val_score(
+                pipeline, sentences, labels, cv=cv, scoring="accuracy"
+            )
 
             results.append(
                 {
@@ -142,7 +149,8 @@ def run_experiments(
                 }
             )
 
-    return results
+    results_sorted = sorted(results, key=lambda r: r["accuracy_mean"], reverse=True)
+    return results_sorted
 
 
 def print_results(results: list[dict]):
