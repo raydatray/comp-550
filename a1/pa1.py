@@ -1,11 +1,19 @@
 import numpy as np
+from nltk.stem import PorterStemmer
+from nltk.tokenize import wordpunct_tokenize
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 
+stemmer = PorterStemmer()
+
+
+def stemmed_tokenizer(text: str) -> list[str]:
+    return [stemmer.stem(w) for w in wordpunct_tokenize(text.lower())]
+
+
 PREPROCESSING_CONFIGS = [
-    # Baseline: simple word counts
     {
         "name": "count, no stopwords, unigrams",
         "vectorizer_class": CountVectorizer,
@@ -25,7 +33,7 @@ PREPROCESSING_CONFIGS = [
         },
     },
     {
-        "name": "count, no stopwords, bigrams",
+        "name": "count, no stopwords, uni+bigrams",
         "vectorizer_class": CountVectorizer,
         "params": {
             "lowercase": True,
@@ -34,7 +42,18 @@ PREPROCESSING_CONFIGS = [
         },
     },
     {
-        "name": "TF-IDF, stopwords, unigrams",
+        "name": "count, stemmed, unigrams",
+        "vectorizer_class": CountVectorizer,
+        "params": {
+            "lowercase": True,
+            "stop_words": None,
+            "tokenizer": stemmed_tokenizer,
+            "token_pattern": None,
+            "ngram_range": (1, 1),
+        },
+    },
+    {
+        "name": "TF-IDF, no stopwords, unigrams",
         "vectorizer_class": TfidfVectorizer,
         "params": {
             "lowercase": True,
@@ -52,7 +71,7 @@ PREPROCESSING_CONFIGS = [
         },
     },
     {
-        "name": "TF-IDF, no stopwords, bigrams",
+        "name": "TF-IDF, no stopwords, uni+bigrams",
         "vectorizer_class": TfidfVectorizer,
         "params": {
             "lowercase": True,
@@ -60,7 +79,19 @@ PREPROCESSING_CONFIGS = [
             "ngram_range": (1, 2),
         },
     },
+    {
+        "name": "tfidf, stemmed, unigrams",
+        "vectorizer_class": TfidfVectorizer,
+        "params": {
+            "lowercase": True,
+            "stop_words": None,
+            "tokenizer": stemmed_tokenizer,
+            "token_pattern": None,
+            "ngram_range": (1, 1),
+        },
+    },
 ]
+
 
 CLASSIFIERS = [
     ("naive bayes", MultinomialNB()),
